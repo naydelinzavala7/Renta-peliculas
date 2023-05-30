@@ -177,7 +177,46 @@ app.post('/actualizarusuario', (req,res) => {
 
 //EDITAR--------------------------------------------------------------------------------------------------------
 //Ruta insertar registro de peliculas
-app.post('/insertarpeliculas', (req, res) => {})
+app.post('/insertarpeliculas', (req, res) => {
+    const { namep, synopsis, genre, director, actors } = req.body
+    if(!namep || !synopsis || !genre || !director || !actors ) {
+        res.json({
+            'alert': 'Faltan Datos'
+        })
+        return
+    }
+ 
+        const peliculas = collection(db, "peliculas")
+        getDoc(doc(peliculas, namep)).then(pelicula => {
+            if(pelicula.exists()) {
+                res.json({
+                    'alert': 'Ya existe la pelicula'
+                })
+            } else {
+                bcrypt.genSalt(10, (err, salt) => {
+                        sendData = {
+                            namep,
+                            synopsis,
+                            genre,
+                            director,
+                            actors
+                        }
+                        //Guardar en la base de datos
+                        setDoc(doc(peliculas, namep), sendData).then(() => {
+                            res.json({
+                                'alert': 'succes'
+                            })
+                        }).catch((error) => {
+                            res.json({
+                                'alert': error
+                            })
+                        })
+                })
+            }
+        })
+    
+
+})
 //--------------------------------------------------------------------------------------------------------------
 
 const PORT = process.env.PORT || 12000
