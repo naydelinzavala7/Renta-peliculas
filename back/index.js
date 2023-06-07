@@ -1,7 +1,7 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const cors = require('cors')
-const { getFirestore, collection, setDoc, getDoc, doc, deleteDoc, updateDoc} = require('firebase/firestore')
+const { getFirestore, collection, setDoc, getDoc, doc, deleteDoc, updateDoc, getDocs, } = require('firebase/firestore')
 const { initializeApp } = require ('firebase/app')
 
 // Aqui va firebase
@@ -34,7 +34,7 @@ app.use(cors(corsOptions))
 
 //USUARIOS-----------------------------------------------------------------------------------------------------
 //Ruta insertar registro de usuarios
-app.post('/insertarusuarios', (req, res) => {
+app.post('/insertar', (req, res) => {
     const { name, lastname, email, password } = req.body
     if(!name || !lastname || !email || !password ) {
         res.json({
@@ -93,7 +93,7 @@ app.post('/insertarusuarios', (req, res) => {
 
 })
 //Ruta para el login usuarios
-app.post('/loginusuarios', (req,res) =>{
+app.post('/login', (req,res) =>{
     const{ email, password } = req.body
     
     if ( !email || !password ){
@@ -104,9 +104,11 @@ app.post('/loginusuarios', (req,res) =>{
     getDoc(doc(usuarios, email))
     .then((usuario) => {
         if(!usuario.exists()){
-            res.json({ 'alert': 'Correo no registrado'})
+            return res.status(400).json({ 
+                'alert': 'Correo no registrado'
+            })
         } else {
-            bcrypt.compare(password, usuario.data().password, (errror, result) => {
+            bcrypt.compare(password, usuario.data().password, (error, result) => {
                 if( result ){
                     //Paara reegresar datos
                     let data = usuario.data()    
@@ -135,7 +137,7 @@ app.post('/eliminarusuario', (req,res) =>{
 })
 //Ruta para editar datos de un usuario
 app.post('/actualizarusuario', (req,res) => {
-    const { name, email, lastname, password } = req.body
+    const { name, lastname, email } = req.body
     if(name.length < 3){
         res.json({
             'alert': 'El nombre requiere minimo 3 caracteres'
@@ -148,17 +150,12 @@ app.post('/actualizarusuario', (req,res) => {
         res.json({
             'alert': 'Debes ingresar un correo electronico'
         })     
-    } else if (password.length < 8) {
-        res.json({
-            'alert': 'Introduce una contraseña valida'
-        })
     } else {
         //Obtener el doc del usuario 
         //db.collection('alumnos').doc(email)
         const dataUpdate = {
             name,
-            lastname,
-            password   
+            lastname 
         }
         updateDoc(doc(db, "usuarios", email), dataUpdate)
         .then((response) =>{
@@ -175,49 +172,136 @@ app.post('/actualizarusuario', (req,res) => {
 
 })
 
-//EDITAR--------------------------------------------------------------------------------------------------------
+
 //Ruta insertar registro de peliculas
 app.post('/insertarpeliculas', (req, res) => {
-    const { namep, synopsis, genre, director, actors } = req.body
-    if(!namep || !synopsis || !genre || !director || !actors ) {
+    const { namepel, idioma, subtitulos, duracion, sinopsis } = req.body
+    
+    if(!namepel || !idioma || !subtitulos || !duracion || !sinopsis ) {
         res.json({
-            'alert': 'Faltan Datos'
+            'alert': 'Faltan Datos Para Insertar una pelicula'
         })
         return
     }
- 
+    //Validaciones
+    if(namepel.length < 2) {
+        res.json({
+            'alert': 'El nombre requiere minimo 2 caracteres'
+        })
+    } else if (idioma.length < 3 ){
+        res.json({
+            'alert': 'El idioma requiere minimo 3 caracteres'
+        })
+    } else if (subtitulos.length < 2) {
+        res.json({
+            'alert': 'Debes insertar si la pelicula tiene subtitulos'
+        })
+    } else if (duracion.length < 5){
+        res.json({
+            'alert': 'Indica una duracion valida'
+        })
+    } else if (sinopsis.length < 20){
+        res.json({
+            'alert': 'La sinopsis es muy corta'
+        })
+    } else {
         const peliculas = collection(db, "peliculas")
-        getDoc(doc(peliculas, namep)).then(pelicula => {
+
+        getDoc(doc(peliculas, namepel)).then(pelicula => {
             if(pelicula.exists()) {
                 res.json({
-                    'alert': 'Ya existe la pelicula'
+                    'alert': 'La pelicula ya existe en la BD'
                 })
             } else {
-                bcrypt.genSalt(10, (err, salt) => {
-                        sendData = {
-                            namep,
-                            synopsis,
-                            genre,
-                            director,
-                            actors
-                        }
-                        //Guardar en la base de datos
-                        setDoc(doc(peliculas, namep), sendData).then(() => {
-                            res.json({
-                                'alert': 'succes'
-                            })
-                        }).catch((error) => {
-                            res.json({
-                                'alert': error
-                            })
-                        })
+                sendData = {
+                    namepel,
+                    idioma,
+                    subtitulos, 
+                    duracion,
+                    sinopsis
+                }
+                setDoc(doc(peliculas, namepel), sendData).then(() =>{
+                    res.json({
+                        'alert': 'succes'
+                    })
+                }).catch((error) =>{
+                    res.json({
+                        'alert': 'error'
+                    })
                 })
             }
         })
-    
+    }
+})
+//Ruta para mostrar todas las peliculas
+app.get('/todaslaspeliculas', async(req, res) => {
+    const peliculas = collection(db, "peliculas")
+    const arreglo = await getDocs(peliculas)
+    let returnData = []
+    arreglo.forEach(pelicula => {
+        returnData.push(pelicula.data())
+    })
+    res.json({
+        'alert': 'succes',
+        'data': returnData
+    })
+})
+//Ruta para eliminar alguna pelicula
+app.post('/eliminarpelicula', (req,res) =>{
+    const {namepel} = req.body
+    console.log('namepel', namepel)
+    let peliculaBorrado = doc(db, "peliculas", namepel)
+    console.log('alumno', peliculaBorrado, namepel)
+    deleteDoc(peliculaBorrado)
+    res.json({ 
+        'alert': 'succes'
+    })
+})
+//Ruta para actualizar una pelicula
+app.post('/actualizarpelicula', (req,res) => {
+    const { namepel, idioma, subtitulos, duracion, sinopsis } = req.body
+    if(namepel.length < 2){
+        res.json({
+            'alert': 'El nombre requiere minimo 2 caracteres'
+        })
+    } else if (idioma.length < 3){
+        res.json({
+            'alert': 'El idioma requiere minimo 3 caracteres'
+        })
+    } else if (subtitulos.length < 2){
+        res.json({
+            'alert': 'Debes insertar si la pelicula tiene subtitulos'
+        })     
+    } else if (duracion.length < 5) {
+        res.json({
+            'alert': 'Debes insertar una duracion valida'
+        })
+    }else if (sinopsis.length < 20) {
+        res.json({
+            'alert': 'La sinopsis es muy corta'
+        })
+    }
+    else {
+        const dataUpdate = {
+            idioma,
+            subtitulos,
+            duracion,
+            sinopsis 
+        }
+        updateDoc(doc(db, "peliculas", namepel), dataUpdate)
+        .then((response) =>{
+            res.json({
+                'alert': 'succes'
+            })
+        })
+        .catch((error)=>{
+            res.json({
+                'alert': error
+            })
+        })
+    }
 
 })
-//--------------------------------------------------------------------------------------------------------------
 
 const PORT = process.env.PORT || 12000
 
