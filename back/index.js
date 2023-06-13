@@ -35,8 +35,8 @@ app.use(cors(corsOptions))
 //USUARIOS-----------------------------------------------------------------------------------------------------
 //Ruta insertar registro de usuarios
 app.post('/insertar', (req, res) => {
-    const { name, lastname, email, password } = req.body
-    if(!name || !lastname || !email || !password ) {
+    const { name, lastname, email, password, numtarjeta, fechavenc, codigoseg } = req.body
+    if(!name || !lastname || !email || !password || !numtarjeta || !fechavenc || !codigoseg ) {
         res.json({
             'alert': 'Faltan Datos'
         })
@@ -57,9 +57,22 @@ app.post('/insertar', (req, res) => {
         })
     } else if (password.length < 8){
         res.json({
-            'alert': 'La contraseña debe tener como inimo 8 caracteres'
+            'alert': 'La contraseña debe tener como minimo 8 caracteres'
         })
-    } else {
+    } else if (numtarjeta.length < 16 || numtarjeta.length > 16 ){
+        res.json({
+            'alert': 'La tarjeta debe tener 16 caracteres'
+        })
+    } else if (fechavenc.length < 5 || fechavenc.length > 5){
+        res.json({
+            'alert': 'La fecha debe tener 5 caracteres'
+        })
+    } else if (codigoseg.length < 4 || codigoseg.length > 4 ){
+        res.json({
+            'alert': 'el codigo debe tener 4 caracteres'
+        })
+    }
+    else {
         const usuarios = collection(db, "usuarios")
         getDoc(doc(usuarios, email)).then(usuario => {
             if(usuario.exists()) {
@@ -73,7 +86,10 @@ app.post('/insertar', (req, res) => {
                             name,
                             lastname,
                             email,
-                            password: hash
+                            password: hash,
+                            numtarjeta,
+                            fechavenc,
+                            codigoseg
                         }
                         //Guardar en la base de datos
                         setDoc(doc(usuarios, email), sendData).then(() => {
@@ -115,7 +131,11 @@ app.post('/login', (req,res) =>{
                     res.json({
                         'alert': 'success',
                         name: data.name,
-                        lastname: data.lastname
+                        lastname: data.lastname,
+                        numtarjeta: data.numtarjeta,
+                        fechavenc:  data.fechavenc,
+                        codigoseg: data.codigoseg
+
                     })
                 } else {
                     res.json({ 'alert': 'Contraseña Incorrecta '})
@@ -124,6 +144,10 @@ app.post('/login', (req,res) =>{
         }
     })
 }) 
+//Ruta para el logout usuarios
+function logout(){
+  firebase.auth().signOut();
+}
 //Ruta para eliminar un usuario
 app.post('/eliminarusuario', (req,res) =>{
     const {email} = req.body
@@ -175,9 +199,9 @@ app.post('/actualizarusuario', (req,res) => {
 
 //Ruta insertar registro de peliculas
 app.post('/insertarpeliculas', (req, res) => {
-    const { namepel, idioma, subtitulos, duracion, sinopsis } = req.body
+    const { namepel, idioma, director, duracion, sinopsis } = req.body
     
-    if(!namepel || !idioma || !subtitulos || !duracion || !sinopsis ) {
+    if(!namepel || !idioma || !director || !duracion || !sinopsis ) {
         res.json({
             'alert': 'Faltan Datos Para Insertar una pelicula'
         })
@@ -192,7 +216,7 @@ app.post('/insertarpeliculas', (req, res) => {
         res.json({
             'alert': 'El idioma requiere minimo 3 caracteres'
         })
-    } else if (subtitulos.length < 2) {
+    } else if (director.length < 2) {
         res.json({
             'alert': 'Debes insertar si la pelicula tiene subtitulos'
         })
@@ -216,7 +240,7 @@ app.post('/insertarpeliculas', (req, res) => {
                 sendData = {
                     namepel,
                     idioma,
-                    subtitulos, 
+                    director, 
                     duracion,
                     sinopsis
                 }
@@ -268,7 +292,7 @@ app.post('/actualizarpelicula', (req,res) => {
         res.json({
             'alert': 'El idioma requiere minimo 3 caracteres'
         })
-    } else if (subtitulos.length < 2){
+    } else if (director.length < 2){
         res.json({
             'alert': 'Debes insertar si la pelicula tiene subtitulos'
         })     
@@ -284,7 +308,7 @@ app.post('/actualizarpelicula', (req,res) => {
     else {
         const dataUpdate = {
             idioma,
-            subtitulos,
+            director,
             duracion,
             sinopsis 
         }
